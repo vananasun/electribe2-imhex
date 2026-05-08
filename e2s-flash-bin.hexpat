@@ -9,6 +9,12 @@ import type.magic;
 
 std::assert(std::mem::size() == 0x1000000, "Flash dump must be 16 MiB!");
 
+////////////////////////////////////////
+//
+// First define required sub-patterns...
+//
+////////////////////////////////////////
+
 //
 // BEGIN AIS
 //
@@ -74,8 +80,6 @@ struct AIS {
     Command commands[MAX_COMMANDS] [[inline]];
 };
 
-AIS ais_bootscript @ 0x00;
-
 //
 // END AIS
 //
@@ -120,7 +124,6 @@ struct E2SPatHeader
     u8 alt_15_16;
 };
 
-
 struct Step
 {
     bool has_notes;
@@ -138,7 +141,6 @@ struct Sequence
 {
     Step steps[16];
 };
-
 
 struct Part
 {
@@ -196,20 +198,49 @@ struct E2SPatFile
 // END e2spat
 //
 
+//
+// Define various structs specific to flash...
+//
+
 struct Firmware {
     u32 base = $;
     
-    u8 firmware[0x200000] @ base;
+    u8 firmware[0x200000];
     u8 splash_screen[128*8] @ base + 0xF9854;
     E2SPatFile init_pattern @ base + 0x000CFF58;
 };
 
-Firmware firmware @ 0x20000;
+struct E2SAllPat_NoKORGHeader {
+    u8 e2sAllPatHeader[0x10000];
+    E2SPatFile patterns[250];
+};
 
-/*
-u8 firmware[0x200000] @ 0x20000;
-u8 splash_screen[128*8] @ 0x20000 + 0xF9854;
-E2SPatFile init_pattern @ 0x000EFF58;
-*/
+struct  _Unknown_File_64KiB {
+    u8 GLST_GLED_block[0x100];
+    u8 _ff_[0xFF00];
+};
 
-E2SPatFile patterns[250] @ 0x00240000; // ends 0x00627FFF
+struct _SQEZ_Blob_1088KiB {
+    u8 _SQEZ_blob_[0x20018];
+    u8 _ff_32KiB_[0xEFFE8]; // 0x00660018
+};
+
+struct _Unknown_File_704KiB {
+    u8 _data_[0xB0000];
+};
+
+////////////////////////////////////////
+//
+// Flash layout
+//
+////////////////////////////////////////
+
+AIS ais_bootscript                     @ 0x00000000;
+Firmware firmware                      @ 0x00020000;
+u8 KORGele2sUSR[0x00010000]            @ 0x00220000;
+E2SAllPat_NoKORGHeader e2sallpat_file  @ 0x00230000;
+u8 _ff_[0x8000]                        @ 0x00628000;
+_Unknown_File_64KiB _UnknownFile1      @ 0x00630000;
+_SQEZ_Blob_1088KiB _SQEZ_blob_1088KiB  @ 0x00640000;
+_Unknown_File_704KiB _UnknownFile2     @ 0x00750000;
+u8 KORGelec2PCM[0x65F020]              @ 0x00800000;
